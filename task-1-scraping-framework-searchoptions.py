@@ -16,8 +16,8 @@ from webdriver_manager.chrome import ChromeDriverManager
 
 class SearchOptions():
 
-  apikey = 'AIzaSyDBOLM7DmuDsmRauihjVOs1zYc2GEI_eoM'
-  cse_id = 'e7e7046206c6e4e42'
+  apikey = '***'
+  cse_id = '***'
 
   def get_soup(self,data, parser = 'html.parser'):
     return BeautifulSoup(data, parser)
