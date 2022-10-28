@@ -16,8 +16,8 @@ from webdriver_manager.chrome import ChromeDriverManager
 
 class SearchOptions():
 
-  apikey = '**'
-  cse_id = '**'
+  apikey = 'AIzaSyDBOLM7DmuDsmRauihjVOs1zYc2GEI_eoM'
+  cse_id = 'e7e7046206c6e4e42'
 
   def get_soup(self,data, parser = 'html.parser'):
     return BeautifulSoup(data, parser)
@@ -214,8 +214,51 @@ class SearchOptions():
                 break
         df = pd.DataFrame(art_links).drop_duplicates(ignore_index=True)
         return df.head(n)
+
+    def indeed(criteria:str, skill:str, n:int=10)->pd.DataFrame:
+        art_links = {x:[] for x in ['Skill', 'Criteria', 'Title', 'Link', 'Content']}
+        url = "https://www.indeed.com/career-advice/search?q=" + criteria.replace(' ', '+') + '+' +  skill.replace(' ', '+')
+        driver.get(url) 
+
+        #Still not able to access the HTML contents for indeed, so have not been able to work upon it.
+        #If a solution is found,the code can be put between the comments below
+        #Code begins here
+
+        
+        #Code ends here
+        df = pd.DataFrame(art_links).drop_duplicates(ignore_index=True)
+        return df.head(n)
+
+    def reddit(criteria:str, skill:str, n:int=10)->pd.DataFrame:
+        art_links = {x:[] for x in ['Skill', 'Criteria', 'Title', 'Link', 'Content']}
+        url = "https://www.reddit.com/search/?q=" + criteria.replace(' ', '%20') + '%20' +  skill.replace(' ', '%20') + '&type=link'
+        burl = 'https://www.reddit.com'
+        driver.get(url) 
+
+        def pagination(driver):
+          scroll_limit = 30
+          for i in range(scroll_limit):
+                  # Scroll down to bottom
+              driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+
+              # Wait to load page
+              time.sleep(0.5)
+
+        pagination(driver) #scroll the page multiple times
+        ele = driver.find_elements(By.CSS_SELECTOR, '#AppRouter-main-content > div > div > div._3ozFtOe6WpJEMUtxDOIvtU > div > div > div._2lzCpzHH0OvyFsvuESLurr._3SktesklDBwXt2pEl0sHY8 > div._1BJGsKulUQfhJyO19XsBph._3SktesklDBwXt2pEl0sHY8 > div._1MTbwSHIISfMYM16YhZ8kN > div.QBfRw7Rj8UkxybFpX-USO > div')
+        for i in range(len(ele)): 
+          soup = self.get_soup(ele[i].get_attribute('outerHTML'))
+          details = soup.select_one('div.y8HYJ-y_lTUHkQIc1mdCq._2INHSNB8V5eaWp4P0rY_mE a')
+          art_links['Link'].append(burl+details.get('href'))
+          art_links['Title'].append(details.find('h3').text.strip())
+        art_links['Skill'] = [skill]*len(ele)
+        art_links['Criteria'] = [criteria]*len(ele)
+        art_links['Content'] = ['']*len(ele)
+
+        df = pd.DataFrame(art_links).drop_duplicates(ignore_index=True)
+        return df.head(n)
     
-    dom_search = {'medium.com':medium, 'wikihow.com':wikihow}
+    dom_search = {'medium.com':medium, 'wikihow.com':wikihow, 'indeed.com': indeed, 'reddit.com': reddit}
     combinations = list(itertools.product(criterias,skills,forums))
     for combn in combinations: 
         results = dom_search[combn[2]](combn[0], combn[1], n)
@@ -223,3 +266,12 @@ class SearchOptions():
     driver.close()
     driver.quit()
     return df
+
+#Sample execution code
+sa = SearchOptions()
+res = sa.forum_search(['improve', 'pitfalls', 'practice'], ['communication skills', 'self awareness'],['medium.com', 'wikihow.com', 'reddit.com'], 20)
+res.drop_duplicates(subset=['Skill', 'Title', 'Link'], inplace=True, ignore_index=True)
+now = datetime.now().strftime("%d-%m-%Y_%H-%M-%S")
+filename = now +'.xlsx'
+res.to_excel(f'D:\\Git\\Omdena-soft-skills-AI\\Excel files\\g-search-api\\{filename}')
+print(tabulate(res, headers = 'keys', tablefmt = 'psql'))
